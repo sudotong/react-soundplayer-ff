@@ -34,9 +34,8 @@ class AudioPlayer extends Component {
             console.log(err);
             return;
           }
-          const resampled_waveform = waveform.resample({ width: 100 });
+          const resampled_waveform = waveform.resample({ scale: waveform.adapter.scale });
           this.setState({
-            waveData: waveform,
             peaks: resampled_waveform.min,
             duration: resampled_waveform.duration
           });
@@ -91,6 +90,7 @@ class AudioPlayer extends Component {
     if (this.playerInterval) clearTimeout(this.playerInterval);
   }
 
+
   componentDidMount() {
     this.getWaveformData();
     this.getSeek();
@@ -130,19 +130,18 @@ class AudioPlayer extends Component {
               </button>
             </div>
 
-            <Waveform
-              ref={(instance) => {
-                this.wrapper = instance;
-              }}
-              barWidth={0.5}
-              peaks={this.state.peaks}
-              height={40}
-              pos={this.state.currentTime}
-              duration={this.state.duration}
-              onClick={this.seek}
-              color="#888"
-              progressGradientColors={[[0, "#fff"], [1, "#fff"]]}
-            />
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <Waveform
+                barWidth={0.5}
+                peaks={this.state.peaks}
+                height={40}
+                pos={this.state.currentTime}
+                duration={this.state.duration}
+                onClick={this.seek}
+                color="#888"
+                progressGradientColors={[[0, "#fff"], [1, "#fff"]]}
+              />
+            </div>
 
             <Timer
               className={"timer"}
