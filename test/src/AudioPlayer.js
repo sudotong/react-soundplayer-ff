@@ -31,7 +31,8 @@ class AudioPlayer extends Component {
       audioContext,
       overviewWaveformColor: "#888",
       overviewHighlightRectangleColor: "white",
-      height: 40
+      height: 40,
+      points: [{ label: "hi", time: 130}, {label: "yo", time: 160 }]
     });
     return p;
   };
