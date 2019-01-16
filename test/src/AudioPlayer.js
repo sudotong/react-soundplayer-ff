@@ -1,12 +1,12 @@
 import React, { Component } from "react";
 import ReactHowler from "react-howler";
 import PropTypes from "prop-types";
-import Waveform from "react-audio-waveform";
 import ReactDOM from "react-dom";
 
-import { PlayButton, Progress, Timer } from "react-soundplayer/components";
+import Peaks from "peaks.js";
 
-const webAudioBuilder = require("waveform-data/webaudio");
+import { PlayButton, Timer } from "react-soundplayer/components";
+
 const audioContext = new AudioContext();
 
 const DEFAULT_DURATION = 456.1495; // have to use this become modifying the audio file breaks 2x speed
@@ -24,31 +24,30 @@ class AudioPlayer extends Component {
     };
   }
 
-  getWaveformData() {
-    const { mp3url } = this.props;
-    fetch(mp3url)
-      .then(response => response.arrayBuffer())
-      .then(buffer => {
-        webAudioBuilder(audioContext, buffer, (err, waveform) => {
-          if (err) {
-            console.log(err);
-            return;
-          }
-          const resampled_waveform = waveform.resample({ scale: waveform.adapter.scale });
-          this.setState({
-            peaks: resampled_waveform.min,
-            duration: resampled_waveform.duration
-          });
-        });
-      });
-  }
+  initializePeaks = () => {
+    const p = Peaks.init({
+      container: ReactDOM.findDOMNode(this.peaksWrapper),
+      mediaElement: ReactDOM.findDOMNode(this.audioElement),
+      audioContext,
+      overviewWaveformColor: "#888",
+      overviewHighlightRectangleColor: "white",
+      height: 40
+    });
+    return p;
+  };
 
-  seek = (secs, play) => {
-    if (secs && secs.seek != null) secs = secs.seek();
-    this.player.seek(secs);
-    let toSet = { currentTime: secs };
-    if (play == true) toSet.playing = true;
-    this.setState(toSet);
+  handlePressDown = e => {
+    const time = this.calculateTime(e);
+    this.peaks.player.seek(time);
+    this.setState({
+      currentTime: time
+    });
+  };
+
+  calculateTime = e => {
+    const width = ReactDOM.findDOMNode(this.peaksWrapper).clientWidth;
+    const percentageOffsetX = e.nativeEvent.offsetX / width;
+    return Math.round(percentageOffsetX * this.peaks.player.getDuration());
   };
 
   toggleRate() {
@@ -63,42 +62,53 @@ class AudioPlayer extends Component {
     return { playing, currentTime };
   }
 
-  getSeek() {
-    if (this.playerInterval) clearInterval(this.playerInterval);
-    this.playerInterval = setInterval(() => {
-      let { mp3url } = this.props;
-      if (this.player) {
-        let currentTime = this.player.seek();
-        const duration =
-          mp3url == DEFAULT_MP3 ? DEFAULT_DURATION : this.player.duration();
-        const toSet = { currentTime };
-        if (!this.state.duration && duration != null) {
-          toSet.duration = duration;
-        }
-        if (duration != null) toSet.loadErr = false;
-        if (mp3url == DEFAULT_MP3 && currentTime >= DEFAULT_DURATION) {
-          this.player.stop();
-          toSet.playing = false;
-          currentTime = 0;
-        }
-        this.setState(toSet);
-      }
-    }, 250);
-  }
-
   componentWillUnmount() {
     if (this.playerInterval) clearTimeout(this.playerInterval);
   }
 
-
   componentDidMount() {
-    this.getWaveformData();
-    this.getSeek();
+    this.peaks = this.initializePeaks();
   }
 
   isObject(obj) {
     return obj instanceof Object || (typeof obj === "object" && obj !== null);
   }
+
+  togglePlay = () => {
+    const peaks = this.peaks;
+    const { playing } = this.state;
+    if (playing) {
+      peaks.player.pause();
+    } else {
+      peaks.player.play();
+    }
+
+    this.setState({
+      playing: !playing
+    });
+  };
+
+  handleDragEnter = e => {
+    this.peaks.segments.removeById("selected-segment");
+    const time = this.calculateTime(e);
+    this.setState({
+      segmentStartTime: time
+    });
+  };
+
+  handleDragStop = e => {
+    const time = this.calculateTime(e);
+    const { segmentStartTime } = this.state;
+    const start = segmentStartTime > time ? time : segmentStartTime;
+    const end = segmentStartTime <= time ? time : segmentStartTime;
+    if (start < end) {
+      this.peaks.segments.add({
+        startTime: start,
+        endTime: end,
+        id: "selected-segment"
+      });
+    }
+  };
 
   render() {
     const { mp3url } = this.props;
@@ -111,7 +121,7 @@ class AudioPlayer extends Component {
           <div className="flex flex-center px2 relative z1">
             <PlayButton
               playing={playing}
-              onTogglePlay={() => this.setState({ playing: !playing })}
+              onTogglePlay={this.togglePlay}
               className="flex-none h2 mr2 button button-transparent button-grow rounded"
             />
             {/* seeking={Boolean}
@@ -130,16 +140,20 @@ class AudioPlayer extends Component {
               </button>
             </div>
 
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <Waveform
-                barWidth={0.5}
-                peaks={this.state.peaks}
-                height={40}
-                pos={this.state.currentTime}
-                duration={this.state.duration}
-                onClick={this.seek}
-                color="#888"
-                progressGradientColors={[[0, "#fff"], [1, "#fff"]]}
+            <div
+              style={{ flex: 1, overflow: "hidden" }}
+              onClick={this.handlePressDown}
+              onMouseDown={this.handleDragEnter}
+              onMouseUp={this.handleDragStop}
+              ref={instance => {
+                this.peaksWrapper = instance;
+              }}
+            >
+              <audio
+                src={this.props.mp3url}
+                ref={instance => {
+                  this.audioElement = instance;
+                }}
               />
             </div>
 
@@ -158,21 +172,6 @@ class AudioPlayer extends Component {
             <div className="indeterminate" />
           </div>
         )}
-        <div>
-          <ReactHowler
-            src={mp3url}
-            playing={playing}
-            loop={false}
-            onLoadError={(id, err) => {
-              console.log("Unable to load media", err);
-              this.setState({
-                loadErr: (err && err.message) || "Startup error"
-              });
-            }}
-            onLoad={() => this.getSeek()}
-            ref={ref => (this.player = ref)}
-          />
-        </div>
       </div>
     );
   }
