@@ -1,7 +1,7 @@
 .DS_Store
 node_modules
 *.log
-
+.idea
 .bundle.js
 bundle.js
 bundle.min.js
