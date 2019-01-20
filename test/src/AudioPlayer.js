@@ -78,12 +78,13 @@ class AudioPlayer extends Component {
         .then(response => audioCtx.decodeAudioData(response.data))
         .then(buffer => {
           const decodedAudioData = buffer.getChannelData(0);
-          this.transformData(decodedAudioData);
+          const buckets = AudioPlayer.transformData(decodedAudioData);
+          this.setState({transformedData: buckets});
         })
         .catch(reason => console.log(reason));
     }
 
-    transformData(decodedAudioData) {
+    static transformData(decodedAudioData) {
       const NUMBER_OF_BUCKETS = 100; // number of "bars" the waveform should have
       let bucketDataSize = Math.floor(decodedAudioData.length / NUMBER_OF_BUCKETS);
       let buckets = [];
@@ -96,11 +97,11 @@ class AudioPlayer extends Component {
             max = decodedAudioData[j];
           }
         }
-        let size = Math.abs(max);
-        buckets.push(size / 2);
+        let size = Math.round((Math.abs(max) / 2) * 100) / 100;
+        buckets.push(size);
       }
       console.log(buckets);
-      this.setState({transformedData: buckets});
+      return buckets;
     }
 
     isObject(obj) {
@@ -112,6 +113,13 @@ class AudioPlayer extends Component {
         let { playing, currentTime, duration, speedup, loadErr } = this.state;
         if (this.isObject(currentTime)) currentTime = 0;
         if (mp3url == DEFAULT_MP3) duration = DEFAULT_DURATION;
+
+      const waveStyle = {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover'
+        };
+
         return (
             <div className="ff-audio">
                 {duration != null ? <div className="flex flex-center px2 relative z1">
@@ -136,15 +144,19 @@ class AudioPlayer extends Component {
                         onSeekTrack={(ts) => this.seek(ts * duration)}
                     />*/}
 
+
+
                   <Waveform
-                    barWidth={3}
-                    peaks={this.props.mp3url}
+                    style={waveStyle}
+                    barWidth={2}
+                    peaks={this.state.transformedData}
                     height={40}
                     pos={this.state.currentTime}
                     duration={DEFAULT_DURATION}
                     // onClick={this.handleClick}
                     color="#c5b0d0"
-                    progressGradientColors={[[0, "#999"], [1, "#fff"]]}
+                    progressColor="#66d039"
+                    progressGradientColors={[[0, "#999"], [1, "#00ff00"]]}
                   />
 
                   <Timer
