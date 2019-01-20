@@ -1,8 +1,10 @@
 import React, { Component } from 'react';
 import ReactHowler from 'react-howler';
 import PropTypes from 'prop-types';
+import Waveform from "react-audio-waveform";
 
 import { PlayButton, Progress, Timer } from 'react-soundplayer/components';
+import axios from "axios";
 
 const DEFAULT_DURATION = 456.1495; // have to use this become modifying the audio file breaks 2x speed
 const DEFAULT_MP3 = "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3";
@@ -66,6 +68,39 @@ class AudioPlayer extends Component {
 
     componentDidMount() {
         this.getSeek();
+        this.getWaveFormData(this.props.mp3url);
+    }
+
+    getWaveFormData(url) {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      axios({url: url, responseType: "arraybuffer"})
+        .then(response => audioCtx.decodeAudioData(response.data))
+        .then(buffer => {
+          const decodedAudioData = buffer.getChannelData(0);
+          this.transformData(decodedAudioData);
+        })
+        .catch(reason => console.log(reason));
+    }
+
+    transformData(decodedAudioData) {
+      const NUMBER_OF_BUCKETS = 100; // number of "bars" the waveform should have
+      let bucketDataSize = Math.floor(decodedAudioData.length / NUMBER_OF_BUCKETS);
+      let buckets = [];
+      for (let i = 0; i < NUMBER_OF_BUCKETS; i++) {
+        let startingPoint = i * bucketDataSize;
+        let endingPoint = i * bucketDataSize + bucketDataSize;
+        let max = 0;
+        for (let j = startingPoint; j < endingPoint; j++) {
+          if (decodedAudioData[j] > max) {
+            max = decodedAudioData[j];
+          }
+        }
+        let size = Math.abs(max);
+        buckets.push(size / 2);
+      }
+      console.log(buckets);
+      this.setState({transformedData: buckets});
     }
 
     isObject(obj) {
@@ -93,14 +128,26 @@ class AudioPlayer extends Component {
                             <img className={speedup ? 'audio-speedup' : ""} src="/pane/speedup.svg" height={35} />
                         </button>
                     </div>
-                    <Progress
+
+                    {/*<Progress
                         className="flex-auto bg-darken-3 rounded"
                         innerClassName="rounded-left bg-white"
                         value={((currentTime || 0) / (duration || 1)) * 100 || 0}
                         onSeekTrack={(ts) => this.seek(ts * duration)}
-                    />
+                    />*/}
 
-                    <Timer
+                  <Waveform
+                    barWidth={3}
+                    peaks={this.props.mp3url}
+                    height={40}
+                    pos={this.state.currentTime}
+                    duration={DEFAULT_DURATION}
+                    // onClick={this.handleClick}
+                    color="#c5b0d0"
+                    progressGradientColors={[[0, "#999"], [1, "#fff"]]}
+                  />
+
+                  <Timer
                         className={"timer"}
                         duration={duration} // in seconds
                         currentTime={currentTime != null ? currentTime : 0} />
