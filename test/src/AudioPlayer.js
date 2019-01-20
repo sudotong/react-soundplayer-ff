@@ -144,8 +144,6 @@ class AudioPlayer extends Component {
                         onSeekTrack={(ts) => this.seek(ts * duration)}
                     />*/}
 
-
-
                   <Waveform
                     style={waveStyle}
                     barWidth={2}
@@ -153,7 +151,7 @@ class AudioPlayer extends Component {
                     height={40}
                     pos={this.state.currentTime}
                     duration={DEFAULT_DURATION}
-                    // onClick={this.handleClick}
+                    onClick={(ts) => this.seek(ts, duration)}
                     color="#c5b0d0"
                     progressColor="#66d039"
                     progressGradientColors={[[0, "#999"], [1, "#00ff00"]]}
