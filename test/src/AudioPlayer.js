@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import ReactHowler from "react-howler";
 import PropTypes from "prop-types";
 
-import { PlayButton, Progress, Timer } from "react-soundplayer/components";
+import { PlayButton, Timer } from "react-soundplayer/components";
 
 import Waveform from "react-audio-waveform";
 
@@ -30,7 +30,7 @@ class AudioPlayer extends Component {
     if (secs && secs.seek != null) secs = secs.seek();
     this.player.seek(secs);
     let toSet = { currentTime: secs };
-    if (play == true) toSet.playing = true;
+    if (play === true) toSet.playing = true;
     this.setState(toSet);
   }
 
@@ -53,13 +53,13 @@ class AudioPlayer extends Component {
       if (this.player) {
         let currentTime = this.player.seek();
         const duration =
-          mp3url == DEFAULT_MP3 ? DEFAULT_DURATION : this.player.duration();
+          mp3url === DEFAULT_MP3 ? DEFAULT_DURATION : this.player.duration();
         const toSet = { currentTime };
         if (!this.state.duration && duration != null) {
           toSet.duration = duration;
         }
         if (duration != null) toSet.loadErr = false;
-        if (mp3url == DEFAULT_MP3 && currentTime >= DEFAULT_DURATION) {
+        if (mp3url === DEFAULT_MP3 && currentTime >= DEFAULT_DURATION) {
           this.player.stop();
           toSet.playing = false;
           currentTime = 0;
@@ -87,12 +87,15 @@ class AudioPlayer extends Component {
     fetch(DEFAULT_MP3)
       .then(response => response.arrayBuffer())
       .then(buffer => {
+        
         webAudioBuilder(audioContext, buffer, (err, waveform) => {
           if (err) {
             console.error(err);
+            this.setState({loadErr : true});
             return;
           }
 
+          console.log(waveform.max);
           this.setState({
             peaks: waveform.max
           });
@@ -104,7 +107,7 @@ class AudioPlayer extends Component {
     const { mp3url } = this.props;
     let { playing, currentTime, duration, speedup, loadErr } = this.state;
     if (this.isObject(currentTime)) currentTime = 0;
-    if (mp3url == DEFAULT_MP3) duration = DEFAULT_DURATION;
+    if (mp3url === DEFAULT_MP3) duration = DEFAULT_DURATION;
     return (
       <div className="ff-audio">
         {duration != null ? (
@@ -126,9 +129,12 @@ class AudioPlayer extends Component {
                   className={speedup ? "audio-speedup" : ""}
                   src="/pane/speedup.svg"
                   height={35}
+                  alt="Speed up"
                 />
               </button>
             </div>
+            
+            <div>
             <Waveform
               barWidth={1}
               peaks={this.state.peaks}
@@ -138,12 +144,13 @@ class AudioPlayer extends Component {
               onClick={(time) => {
                 this.seek(time);
               }}
+              resize={() => {console.log("resized");}}
               width={100}
               color="#999"
               progressGradientColors={[[0, "#fff"], [1, "#eee"]]}
               transitionDuration={300}
-              
             />
+            </div>
             <Timer
               className={"timer"}
               duration={duration} // in seconds
