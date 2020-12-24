@@ -1,20 +1,33 @@
-import React, { Component } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
 import "./waveform.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPlayCircle,
+  faPauseCircle,
+  faBolt,
+} from "@fortawesome/free-solid-svg-icons";
 
-class WaveForm extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      loading: false,
-      playing: false,
-    };
-  }
+export default function WaveForm() {
+  // const [trackUrl, setTrackUrl] = useState("");
+  const [currentTime, setCurrentTime] = useState("0:00");
+  const [duration, setDuration] = useState("");
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const wavesurfer = useRef(null);
 
-  componentDidMount() {
-    this.waveform = WaveSurfer.create({
+  // const defaultUrl =
+  // "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3";
+
+  useEffect(() => {
+    let interval;
+    setLoading(true);
+
+    wavesurfer.current = WaveSurfer.create({
       barWidth: 1,
-      height: 50,
+      height: 40,
+      showTime: true,
       container: "#waveform",
       progressColor: "#fff",
       responsive: true,
@@ -22,39 +35,109 @@ class WaveForm extends Component {
       interact: true,
       backend: "MediaElement",
       fillParent: true,
+      scrollParent: false,
+      cursorWidth: 3,
     });
 
-    this.waveform.load(
+    wavesurfer.current.load(
       "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3"
     );
 
-    // this.waveform.on("ready", () => {
-    //   this.waveform.play();
-    // });
+    wavesurfer.current.on("ready", () => {
+      setLoading(false);
+      setDuration(formatTime(wavesurfer.current.getDuration()));
+      interval = setInterval(() => {
+        setCurrentTime(formatTime(wavesurfer.current.getCurrentTime()));
+      }, 1000);
+    });
 
-    this.waveform.on("error", (err) => {
+    wavesurfer.current.on("error", (err) => {
       alert(err);
     });
+
+    return () => {
+      wavesurfer.current.destroy();
+      clearInterval(interval);
+    };
+  }, []);
+
+  // toggle play/pause
+  function playPause() {
+    wavesurfer.current.playPause();
+    setPlaying(!playing);
   }
 
-  render() {
-    return (
-      <section className="container">
-        <div className="sepctrum">
-          <div id="waveform"></div>
-        </div>
+  // set playback speed for track (1 is normal speed, 2 is double speed).
+  function setTrackSpeed(rate) {
+    wavesurfer.current.setPlaybackRate(rate);
+    setSpeed(rate);
+    return;
+  }
 
-        <div className="timestamp">
-          <p>00:00 / 7:42</p>
+  // format seconds to hours minutes ans seconds
+  function formatTime(time) {
+    // Hours, minutes and seconds
+    var hrs = ~~(time / 3600);
+    var mins = ~~((time % 3600) / 60);
+    var secs = ~~time % 60;
+
+    // Output like "1:01" or "4:03:59" or "123:03:59"
+    var ret = "";
+    if (hrs > 0) {
+      ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+    }
+    ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+    ret += "" + secs;
+    return ret;
+  }
+
+  return (
+    <section className="container">
+      <div className="spectrum-area">
+        <div className="spectrum">
+          <div id="waveform" />
         </div>
 
         <div className="controls">
-          <button>play</button>
-          <button>pause</button>
-        </div>
-      </section>
-    );
-  }
-}
+          {/* checks if the track is playing then renders the pause button, if not render the play button  */}
+          {playing ? (
+            <button onClick={playPause} className="controls-button">
+              <FontAwesomeIcon icon={faPauseCircle} size="2x" />
+            </button>
+          ) : (
+            <button onClick={playPause} className="controls-button">
+              <FontAwesomeIcon icon={faPlayCircle} size="2x" />
+            </button>
+          )}
 
-export default WaveForm;
+          {/* checks the current speed, if speed is one, send two to the finction to increase speed, if not send 1  */}
+          {speed === 1 ? (
+            <button
+              onClick={() => setTrackSpeed(2)}
+              className="controls-button"
+            >
+              2<FontAwesomeIcon icon={faBolt} size="1x" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setTrackSpeed(1)}
+              className="controls-button"
+            >
+              1<FontAwesomeIcon icon={faBolt} size="1x" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? null : (
+        <div className="controls-panel">
+          <div className="timestamp">
+            <p>
+              {currentTime} / {duration}
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
