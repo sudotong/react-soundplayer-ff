@@ -1,0 +1,23 @@
+.container {
+  height: auto;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.spectrum {
+  background-color: #2964d1;
+}
+
+.timestamp {
+  text-align: center;
+  margin: 0;
+}
+.timestamp p {
+  margin: 0;
+}
+
+.controls {
+  text-align: center;
+  padding: 1rem;
+}
