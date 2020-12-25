@@ -73,20 +73,6 @@ export default function WaveForm({ url }) {
     };
   }, []);
 
-  // detect time on double click
-  // useEffect(() => {
-  //   window.addEventListener("dblclick", () => {
-  //     getWavePoint();
-  //   });
-  //   return () => {
-  //     window.removeEventListener("dblclick", getWavePoint);
-  //   };
-  // }, [wavesurfer.current]);
-
-  // function getWavePoint() {
-  //   console.log(wavesurfer.current.getCurrentTime());
-  // }
-
   // toggle play/pause
   function playPause() {
     wavesurfer.current.playPause();
