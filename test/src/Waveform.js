@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
+import WaveSurferAsync from "wavesurfer.js-async";
+import regions from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import "./waveform.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -8,7 +10,7 @@ import {
   faBolt,
 } from "@fortawesome/free-solid-svg-icons";
 
-export default function WaveForm() {
+export default function WaveForm({ url }) {
   // const [trackUrl, setTrackUrl] = useState("");
   const [currentTime, setCurrentTime] = useState("0:00");
   const [duration, setDuration] = useState("");
@@ -16,13 +18,16 @@ export default function WaveForm() {
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const wavesurfer = useRef(null);
+  const wave = useRef();
 
-  // const defaultUrl =
-  // "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3";
+  const defaultUrl =
+    "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3";
 
   useEffect(() => {
     let interval;
     setLoading(true);
+    const urlString = url ? url : defaultUrl;
+    // setTrackUrl(urlString);
 
     wavesurfer.current = WaveSurfer.create({
       barWidth: 1,
@@ -37,11 +42,18 @@ export default function WaveForm() {
       fillParent: true,
       scrollParent: false,
       cursorWidth: 3,
+      plugins: [
+        regions.create({
+          regionMinLength: 2,
+          dragSelection: {
+            slop: 5,
+          },
+        }),
+        WaveSurferAsync.create(),
+      ],
     });
 
-    wavesurfer.current.load(
-      "https://parse-server-ff.s3.amazonaws.com/ae5992f0f5bb1f259bafa41b3771e3bb_call12565815456dwwwwww795896232www-01b59bd3.mp3"
-    );
+    wavesurfer.current.load(urlString);
 
     wavesurfer.current.on("ready", () => {
       setLoading(false);
@@ -60,6 +72,20 @@ export default function WaveForm() {
       clearInterval(interval);
     };
   }, []);
+
+  // detect time on double click
+  // useEffect(() => {
+  //   window.addEventListener("dblclick", () => {
+  //     getWavePoint();
+  //   });
+  //   return () => {
+  //     window.removeEventListener("dblclick", getWavePoint);
+  //   };
+  // }, [wavesurfer.current]);
+
+  // function getWavePoint() {
+  //   console.log(wavesurfer.current.getCurrentTime());
+  // }
 
   // toggle play/pause
   function playPause() {
@@ -95,7 +121,7 @@ export default function WaveForm() {
     <section className="container">
       <div className="spectrum-area">
         <div className="spectrum">
-          <div id="waveform" />
+          <div id="waveform" ref={wave} />
         </div>
 
         <div className="controls">
